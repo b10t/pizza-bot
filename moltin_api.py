@@ -1,7 +1,7 @@
 import time
 
 import requests
-from environs import Env
+from slugify import slugify
 
 
 class Moltin():
@@ -154,6 +154,59 @@ class Moltin():
 
         return response.json()
 
+    def create_product(self, name, description, price, currency='RUB'):
+        """Создаёт товар."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        payload = {
+            'data': {
+                'type': 'product',
+                'name': f'{name}',
+                'slug': f'{slugify(name)}',
+                'sku':  f'{slugify(name)}-001',
+                'description': description,
+                'manage_stock': False,
+                'price': [
+                    {
+                        'amount': price,
+                        'currency': currency,
+                        'includes_tax': True,
+                    }
+                ],
+                'status': 'live',
+                'commodity_type': 'physical',
+            }
+        }
+
+        response = requests.post(
+            f'https://api.moltin.com/v2/products',
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+
+        return response.json().get('data', {})
+
+    def delete_product(self, product_id):
+        """Удаляет товар."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.delete(
+            f'https://api.moltin.com/v2/products/{product_id}',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        return response.status_code
+
     def get_products(self):
         """Возвращает список товаров."""
         products = []
@@ -189,21 +242,29 @@ class Moltin():
 
         return response.json().get('data', {})
 
-    def get_file_url(self, file_id):
-        """Получает URL файла по id."""
+    def add_file_to_product(self, product_id, file_id):
+        """Добавляет файл к товару."""
         moltin_token = self.get_access_token()
 
         headers = {
             'Authorization': f'Bearer {moltin_token.get("access_token")}'
         }
 
-        response = requests.get(
-            f'https://api.moltin.com/v2/files/{file_id}',
-            headers=headers
+        payload = {
+            'data': {
+                'type': 'main_image',
+                'id': f'{file_id}',
+            }
+        }
+
+        response = requests.post(
+            f'https://api.moltin.com/v2/products/{product_id}/relationships/main-image',
+            headers=headers,
+            json=payload
         )
         response.raise_for_status()
 
-        return response.json()
+        return response.json().get('data', {})
 
     def create_customer(self, customer_id, customer_email):
         """Создает покупателя."""
@@ -229,6 +290,57 @@ class Moltin():
         response.raise_for_status()
 
         return response.json()
+
+    def get_files(self):
+        """Возвращает список файлов."""
+        products = []
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.get(
+            'https://api.moltin.com/v2/files',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        products = response.json().get('data', [])
+
+        return products
+
+    def get_file_url(self, file_id):
+        """Получает URL файла по id."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.get(
+            f'https://api.moltin.com/v2/files/{file_id}',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def delete_file(self, file_id):
+        """Удаляет файл."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.delete(
+            f'https://api.moltin.com/v2/files/{file_id}',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        return response.status_code
 
     def upload_file_from_url(self, file_url):
         """Загружает файл из ссылки."""
