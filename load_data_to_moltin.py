@@ -68,15 +68,19 @@ def main():
     moltin_client_secret = env.str('MOLTIN_CLIENT_SECRET')
     moltin_api = Moltin(moltin_client_id, moltin_client_secret)
 
-    delete_all_products(moltin_api)
-    delete_all_files(moltin_api)
-    load_menu(moltin_api)
+    # delete_all_products(moltin_api)
+    # delete_all_files(moltin_api)
+    # load_menu(moltin_api)
 
     # TODO удалить
+    # print(moltin_api.get_access_token())
     # print(moltin_api.get_products())
     # print(moltin_api.get_files())
+    # print(moltin_api.create_flow('Pizzeria2', 'My Pizzeria2'))
+    # print(moltin_api.get_flows())
+    print(moltin_api.get_flow_by_slug('Pizzeria'))
+
 
 
 if __name__ == '__main__':
-    # main()
-    ...
+    main()

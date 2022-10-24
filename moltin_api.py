@@ -361,3 +361,56 @@ class Moltin():
         response.raise_for_status()
 
         return response.json()
+
+    def create_flow(self, flow_name, flow_description):
+        """Создаёт Flow."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        payload = {
+            'data': {
+                'type': 'flow',
+                'name': f'{flow_name}',
+                'slug': f'{slugify(flow_name)}',
+                'description': flow_description,
+                'enabled': True,
+            }
+        }
+
+        response = requests.post(
+            f'https://api.moltin.com/v2/flows',
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def get_flows(self):
+        """Получает список Flows."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.get(
+            f'https://api.moltin.com/v2/flows',
+            headers=headers,
+        )
+        response.raise_for_status()
+
+        return response.json().get('data', [])
+
+    def get_flow_by_slug(self, flow_slug):
+        """Получает Flow по slug."""
+        flows = self.get_flows()
+
+        flow_slug = slugify(flow_slug)
+
+        for flow in flows:
+            if flow.get('slug') == flow_slug:
+                return flow
