@@ -414,3 +414,107 @@ class Moltin():
         for flow in flows:
             if flow.get('slug') == flow_slug:
                 return flow
+
+    def create_field_in_flow(self,
+                             flow_id,
+                             field_name,
+                             field_description,
+                             field_type,
+                             required=True):
+        """Создаёт поле в Flow."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        payload = {
+            'data': {
+                'type': 'field',
+                'name': field_name,
+                'slug': slugify(field_name),
+                'field_type': field_type,
+                'validation_rules': [],
+                'description': field_description,
+                'required': required,
+                'enabled': True,
+                'order': 1,
+                'omit_null': False,
+                'relationships': {
+                    'flow': {
+                        'data': {
+                            'type': 'flow',
+                            'id': flow_id
+                        }
+                    }
+                }
+            }
+        }
+
+        response = requests.post(
+            f'https://api.moltin.com/v2/fields',
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def create_entry(self, flow_name, field_data):
+        """Создание записи."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        payload = {
+            'data': {
+                'type': 'entry',
+                **field_data
+            }
+        }
+
+        response = requests.post(
+            f'https://api.moltin.com/v2/flows/{slugify(flow_name)}/entries',
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def get_entries(self, flow_name):
+        """Возвращает все записи."""
+        entries = []
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.get(
+            f'https://api.moltin.com/v2/flows/{slugify(flow_name)}/entries',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        entries = response.json().get('data', [])
+
+        return entries
+
+    def delete_entry(self, flow_name, entry_id):
+        """Удаление записи."""
+        moltin_token = self.get_access_token()
+
+        headers = {
+            'Authorization': f'Bearer {moltin_token.get("access_token")}'
+        }
+
+        response = requests.delete(
+            f'https://api.moltin.com/v2/flows/{slugify(flow_name)}/entries/{entry_id}',
+            headers=headers
+        )
+        response.raise_for_status()
+
+        return response.status_code

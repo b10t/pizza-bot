@@ -2,6 +2,7 @@ import json
 import logging
 
 from environs import Env
+from slugify import slugify
 
 from moltin_api import Moltin
 
@@ -18,6 +19,12 @@ def delete_all_files(moltin_api):
     """Удаляет все файлы."""
     for remote_file in moltin_api.get_files():
         moltin_api.delete_file(remote_file.get('id'))
+
+
+def delete_all_addresses(moltin_api):
+    """Удаляет все записи."""
+    for entry in moltin_api.get_entries('Pizzeria'):
+        moltin_api.delete_entry('Pizzeria', entry.get('id'))
 
 
 def create_product(moltin_api, product, image_id):
@@ -55,6 +62,24 @@ def load_menu(moltin_api):
         create_product(moltin_api, menu_item, file_id)
 
 
+def load_addresses(moltin_api):
+    """Загружает данные по адресам."""
+    with open('load_data/addresses.json', 'r') as file_addresses:
+        addresses = json.load(file_addresses)
+
+    for address in addresses:
+        logger.debug(address)
+
+        field_data = {
+            'address': address.get('address').get('full'),
+            'alias': address.get('alias'),
+            'longitude': float(address.get('coordinates').get('lon')),
+            'latitude': float(address.get('coordinates').get('lat')),
+        }
+
+        moltin_api.create_entry('Pizzeria', field_data)
+
+
 def main():
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -71,6 +96,8 @@ def main():
     # delete_all_products(moltin_api)
     # delete_all_files(moltin_api)
     # load_menu(moltin_api)
+    # delete_all_addresses(moltin_api)
+    # load_addresses(moltin_api)
 
     # TODO удалить
     # print(moltin_api.get_access_token())
@@ -78,8 +105,13 @@ def main():
     # print(moltin_api.get_files())
     # print(moltin_api.create_flow('Pizzeria2', 'My Pizzeria2'))
     # print(moltin_api.get_flows())
-    print(moltin_api.get_flow_by_slug('Pizzeria'))
-
+    # print(moltin_api.get_flow_by_slug('Pizzeria'))
+    # print(moltin_api.create_field_in_flow(
+    #     'd0e9cbe1-9435-45e4-98dd-4b8f34b1a509',
+    #     'Latitude',
+    #     'Latitude Pizzeria',
+    #     'float'
+    # ))
 
 
 if __name__ == '__main__':
