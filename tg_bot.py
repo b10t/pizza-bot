@@ -89,7 +89,7 @@ def handle_menu(bot, update, moltin_api):
         image_url = open('no_image.jpg', 'rb')
 
     price = product.get('price')[0]
-    price = f'{float(price["amount"]) / 100} {price["currency"]}'
+    price = f'{float(price["amount"])} {price["currency"]}'
 
     message_text = dedent(
         f'''
@@ -106,10 +106,10 @@ def handle_menu(bot, update, moltin_api):
 
     quantity_button = []
 
-    for quantity in [1, 5, 10]:
+    for quantity in [1]:
         quantity_button.append(
             InlineKeyboardButton(
-                f'{quantity} кг.',
+                f'Добавить в корзину',
                 callback_data=f'{item_id}#{quantity}',
             )
         )
@@ -148,6 +148,8 @@ def handle_description(bot, update, moltin_api):
     item_id, quantity = query.data.split('#')
 
     moltin_api.add_cart_item(user_id, item_id=item_id, quantity=quantity)
+
+    query.answer(text='Товар добавлен в корзину.', show_alert=True)
 
     return 'HANDLE_DESCRIPTION'
 
