@@ -258,15 +258,6 @@ def handle_waiting(bot, update, moltin_api, geocode_api):
     message_id = update.effective_message.message_id
     user_id = update.effective_user.id
 
-    # update._effective_message.location.latitude
-    #     # update._effective_message.location.longitude
-    # message = None
-    #     if update.edited_message:
-    #         message = update.edited_message
-    #     else:
-    #         message = update.message
-    #     current_pos = (message.location.latitude, message.location.longitude)
-
     if update.message:
         message = update.message
 
@@ -276,9 +267,35 @@ def handle_waiting(bot, update, moltin_api, geocode_api):
         else:
             current_pos = geocode_api.fetch_coordinates(message.text)
 
+        if not current_pos:
+            bot.send_message(chat_id=chat_id,
+                             text='Не могу распознать этот адрес.')
+
+            return 'HANDLE_WAITING'
+        else:
+            pizzeria_addresses = moltin_api.get_entries('Pizzeria')
+
+            for address in pizzeria_addresses:
+                coords_from = (address.get('latitude'),
+                               address.get('longitude'))
+                distance = geocode_api.calculate_distance(
+                    coords_from,
+                    current_pos
+                )
+
+                address['distance'] = distance
+
+            # TODO #3 Удалить принт.
+            # print(pizzerias_addresses)
+
+            pizzeria = min(pizzeria_addresses,
+                           key=lambda address: address['distance'])
+
+            print(pizzeria)
+
         update.message.reply_text(f'{current_pos}')
 
-        # TODO временно закомментировали
+        # TODO #2 временно закомментировали
         # moltin_api.create_customer(user_id, email)
 
         return show_cart(bot, update, moltin_api, geocode_api)

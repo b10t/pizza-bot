@@ -484,7 +484,7 @@ class Moltin():
 
         return response.json()
 
-    def get_entries(self, flow_name):
+    def get_entries(self, flow_name: str):
         """Возвращает все записи."""
         entries = []
         moltin_token = self.get_access_token()

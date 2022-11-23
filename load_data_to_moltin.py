@@ -99,7 +99,8 @@ def main():
     # delete_all_addresses(moltin_api)
     # load_addresses(moltin_api)
 
-    # TODO удалить
+    # TODO #1 удалить
+    # print(moltin_api.get_entries('Pizzeria'))
     # print(moltin_api.get_access_token())
     # print(moltin_api.get_products())
     # print(moltin_api.get_files())

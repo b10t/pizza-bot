@@ -1,4 +1,5 @@
 import requests
+from geopy.distance import distance, lonlat
 
 
 class Geocode():
@@ -22,4 +23,11 @@ class Geocode():
 
         most_relevant = found_places[0]
         lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-        return lat, lon
+        return float(lat), float(lon)
+
+    def calculate_distance(self, coords_from, coords_to):
+        """Рассчитывает расстояние между двумя точками."""
+        if coords_from and coords_to:
+            return round(distance(coords_from, coords_to).km, 2)
+
+        return None
