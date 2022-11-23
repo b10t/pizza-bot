@@ -8,6 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
 
+from geocode_api import Geocode
 from moltin_api import Moltin
 
 _database = None
@@ -15,12 +16,12 @@ _database = None
 logger = logging.getLogger('fish-shop')
 
 
-def start(bot, update, moltin_api):
+def start(bot, update, moltin_api, geocode_api):
     """
     Хэндлер для состояния START.
 
     Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
-    Теперь в ответ на его команды будет запускаеться хэндлер echo.
+    Теперь в ответ на его команды будет запускается хэндлер echo.
     """
     moltin_api.get_or_create_cart(update.effective_user.id)
 
@@ -71,14 +72,14 @@ def get_image_url(product, moltin_api):
             return file_url
 
 
-def handle_menu(bot, update, moltin_api):
+def handle_menu(bot, update, moltin_api, geocode_api):
     """Обработка кнопок меню."""
     chat_id = update.effective_chat.id
     message_id = update.effective_message.message_id
     query = update.callback_query
 
     if query.data == 'SHOW_CART':
-        return show_cart(bot, update, moltin_api)
+        return show_cart(bot, update, moltin_api, geocode_api)
 
     item_id = query.data
     product = moltin_api.get_product(item_id)
@@ -135,15 +136,15 @@ def handle_menu(bot, update, moltin_api):
     return 'HANDLE_DESCRIPTION'
 
 
-def handle_description(bot, update, moltin_api):
+def handle_description(bot, update, moltin_api, geocode_api):
     """Обработка вывода описания."""
     user_id = update.effective_user.id
     query = update.callback_query
 
     if query.data == 'SHOW_CART':
-        return show_cart(bot, update, moltin_api)
+        return show_cart(bot, update, moltin_api, geocode_api)
     elif query.data == 'BACK':
-        return start(bot, update, moltin_api)
+        return start(bot, update, moltin_api, geocode_api)
 
     item_id, quantity = query.data.split('#')
 
@@ -154,7 +155,7 @@ def handle_description(bot, update, moltin_api):
     return 'HANDLE_DESCRIPTION'
 
 
-def show_cart(bot, update, moltin_api):
+def show_cart(bot, update, moltin_api, geocode_api):
     """Отображение корзины."""
     chat_id = update.effective_chat.id
     message_id = update.effective_message.message_id
@@ -214,7 +215,7 @@ def show_cart(bot, update, moltin_api):
     )
 
     keyboard.append(
-        [InlineKeyboardButton('Оплатить', callback_data='WAITING_EMAIL')]
+        [InlineKeyboardButton('Оплатить', callback_data='HANDLE_WAITING')]
     )
 
     keyboard.append(
@@ -234,48 +235,64 @@ def show_cart(bot, update, moltin_api):
     return 'HANDLE_CART'
 
 
-def handle_cart(bot, update, moltin_api):
+def handle_cart(bot, update, moltin_api, geocode_api):
     """Обработка кнопок корзины."""
     user_id = update.effective_user.id
     query = update.callback_query
 
-    if query.data == 'WAITING_EMAIL':
-        return waiting_email(bot, update, moltin_api)
+    if query.data == 'HANDLE_WAITING':
+        return handle_waiting(bot, update, moltin_api, geocode_api)
     elif query.data == 'BACK':
-        return start(bot, update, moltin_api)
+        return start(bot, update, moltin_api, geocode_api)
 
     item_id = query.data
 
     moltin_api.remove_cart_item(user_id, item_id)
 
-    return show_cart(bot, update, moltin_api)
+    return show_cart(bot, update, moltin_api, geocode_api)
 
 
-def waiting_email(bot, update, moltin_api):
-    """Получение email покупателя."""
+def handle_waiting(bot, update, moltin_api, geocode_api):
+    """Обработчик получения оплаты."""
     chat_id = update.effective_chat.id
     message_id = update.effective_message.message_id
     user_id = update.effective_user.id
 
+    # update._effective_message.location.latitude
+    #     # update._effective_message.location.longitude
+    # message = None
+    #     if update.edited_message:
+    #         message = update.edited_message
+    #     else:
+    #         message = update.message
+    #     current_pos = (message.location.latitude, message.location.longitude)
+
     if update.message:
-        email = update.message.text
+        message = update.message
 
-        update.message.reply_text(f'Ваш e-mail: {email}')
+        if message.location:
+            current_pos = (message.location.latitude,
+                           message.location.longitude)
+        else:
+            current_pos = geocode_api.fetch_coordinates(message.text)
 
-        moltin_api.create_customer(user_id, email)
+        update.message.reply_text(f'{current_pos}')
 
-        return show_cart(bot, update, moltin_api)
+        # TODO временно закомментировали
+        # moltin_api.create_customer(user_id, email)
+
+        return show_cart(bot, update, moltin_api, geocode_api)
     else:
         bot.send_message(chat_id=chat_id,
-                         text='Пожалуйста, введите свой e-mail:')
+                         text='Пришлите, пожалуйста, Ваш адрес текстом или геолокацию:')
 
         bot.delete_message(chat_id=chat_id,
                            message_id=message_id)
 
-        return 'WAITING_EMAIL'
+        return 'HANDLE_WAITING'
 
 
-def handle_users_reply(bot, update, moltin_api):
+def handle_users_reply(bot, update, moltin_api, geocode_api):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
 
@@ -308,14 +325,14 @@ def handle_users_reply(bot, update, moltin_api):
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
-        'WAITING_EMAIL': waiting_email
+        'HANDLE_WAITING': handle_waiting
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
     # Оставляю этот try...except, чтобы код не падал молча.
     # Этот фрагмент можно переписать.
     try:
-        next_state = state_handler(bot, update, moltin_api)
+        next_state = state_handler(bot, update, moltin_api, geocode_api)
         db.set(chat_id, next_state)
     except Exception as err:
         logger.error(err)
@@ -356,19 +373,23 @@ def main():
 
     token = env.str('TELEGRAM_TOKEN')
     moltin_client_id = env.str('MOLTIN_CLIENT_ID')
+    yandex_api_key = env.str('YANDEX_API_KEY', '')
 
     moltin_api = Moltin(moltin_client_id)
+    geocode_api = Geocode(yandex_api_key)
 
     handle_users_reply_partial = partial(
         handle_users_reply,
-        moltin_api=moltin_api
+        moltin_api=moltin_api,
+        geocode_api=geocode_api
     )
 
     updater = Updater(token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply_partial))
     dispatcher.add_handler(MessageHandler(
-        Filters.text, handle_users_reply_partial))
+        (Filters.text | Filters.location) & ~Filters.command,
+        handle_users_reply_partial))
     dispatcher.add_handler(CommandHandler('start', handle_users_reply_partial))
     updater.start_polling()
 

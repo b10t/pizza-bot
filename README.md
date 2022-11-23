@@ -24,6 +24,7 @@ pip install -r requirements.txt
 `REDIS_PORT` - порт сервера Redis.  
 `REDIS_USERNAME` - имя пользователя для сервера Redis.  
 `REDIS_PASSWORD` - пароль пользователя для сервера Redis.  
+`YANDEX_API_KEY` - ключ от API Yandex.  
 
 ### Как запускать
 
